@@ -847,15 +847,107 @@ class TreeDynamicsSystem(object):
     return (systemValue, accumulatedActionError)
 
 
-#TODO
+
 class LinearDynamicsSystem(object):
   """
   Linear dynamics system.
   """
 
-  def __init__(self, arg):
+  def __init__(self):
+    """
+    Initialize a linear dynamics system.
+    """
     super(LinearDynamicsSystem, self).__init__()
-    self.arg = arg
+
+    self._initInternalData()
+
+  def _initInternalData(self):
+    """
+    Initialize internal data.
+
+    @property _treeDynamicsSystem The internal tree-structured dynamics system.
+    """
+    self._treeDynamicsSystem = TreeDynamicsSystem()
+
+  def updateNode(self, name, node):
+    """
+    Append or update a dynamics system node.
+
+    @param name The name of the node.
+    @param node The node to append or update. Note that its name should match 
+                the node name.
+    """
+    self._treeDynamicsSystem.updateNode(name, node)
+
+  def updateRootNodeName(self, name):
+    """
+    Designate or update a dynamics system node as the root node, with which the 
+    optimization process will begin.
+
+    @param name The name of the node. Note that the node with the corresponding 
+                name should have been appended to the dynamics system.
+    """
+    self._treeDynamicsSystem.updateRootNodeName(name)
+
+  def updateDynamics(self, name, prev_node_name, dynamics, next_node_name, 
+                           gamma=1.0, alpha=0.000025):
+    """
+    Append or update a dynamics system dynamics model, which will be appended 
+    to a bifurcation primitive generated automatically with transition model.
+
+    @param name The name of the bifurcation primitive.
+    @param prev_node_name The name of the previous node that connects to the 
+                          automatically generated bifurcation primitive.
+    @param dynamics The edge dynamics model to append or update.
+    @param next_node_name The name of the following node that connects to the 
+                          automatically generated bifurcation primitive.
+    @param gamma The discount factor. Note that this parameter is optional and 
+                 is set to `1.0` in default. Its range is between `0.0` to 
+                 `1.0`.
+    @param alpha The learning rate in gradient-based optimization. Note that 
+                 this parameter is optional and is set to `0.000025` in 
+                 default. It should be non-negative.
+    """
+    assert(type(dynamics) is DynamicsSystemEdgeDynamicsModel)
+
+    # transition model
+    transition = DynamicsSystemTransitionModel()
+
+    def transition_func (ssa):
+      prob = { next_node_name: 1.0 }
+      return prob
+    transition.transition_func = transition_func
+
+    def transition_dfunc (ssa):
+      d = {}
+      d[next_node_name] = {}
+      for k in ssa.keys():
+        if k == 'selection':
+          d[next_node_name][k] = np.zeros((1))
+        else:
+          d[next_node_name][k] = np.zeros((ssa.retrive(k).shape[0]))
+      return d
+    transition.transition_dfunc = transition_dfunc
+
+    # bifurcation primitive
+    primitive = DynamicsSystemPrimitive(name, gamma=gamma, alpha=alpha)
+    primitive.prev_node_name = prev_node_name
+    primitive.transition = transition
+    primitive.dynamics_dict = {}
+    primitive.dynamics_dict[next_node_name] = dynamics
+
+    # append primitive
+    self._treeDynamicsSystem.updatePrimitive(name, primitive)
+
+  def optimizeActionsOnce(self):
+    """
+    Optimize for once the actions for different nodes in the dynamics system.
+
+    @return A tuple with the system value and the accumulated action error.
+    """
+    systemValue, accumulatedActionError = self._treeDynamicsSystem.optimizeActionsOnce()
+
+    return (systemValue, accumulatedActionError)
 
 
 #TODO
