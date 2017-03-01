@@ -483,6 +483,7 @@ class DynamicsSystemPrimitive(object):
   @property dynamics_dict A dictionary that maps the names of the following 
                           nodes to corresponding edge dynamics models.
   @property gamma The discount factor.
+  @property alpha The learning rate in gradient-based optimization.
   @property action_error The action error, which indicates how much the values 
                          of the action elements are changed during the last 
                          backward computation.
@@ -509,9 +510,9 @@ class DynamicsSystemPrimitive(object):
     @param gamma The discount factor. Note that this parameter is optional and 
                  is set to `1.0` in default. Its range is between `0.0` to 
                  `1.0`.
-    @param alpha The learning rate. The learning rate in gradient-based 
-                 optimization. Note that this parameter is optional and is set 
-                 to `0.000025` in default. It should be non-negative.
+    @param alpha The learning rate in gradient-based optimization. Note that 
+                 this parameter is optional and is set to `0.000025` in 
+                 default. It should be non-negative.
     """
     super(DynamicsSystemPrimitive, self).__init__()
 
@@ -800,7 +801,7 @@ class TreeDynamicsSystem(object):
 
     assert(self._root_node_name is not None)
 
-  def _optimizeActionsOnce(self):
+  def optimizeActionsOnce(self):
     """
     Optimize for once the actions for different nodes in the dynamics system.
 

@@ -100,7 +100,7 @@ if __name__ == '__main__':
   # execute
   last_J = None
   for i in range(1000):
-    J, a_err = dynamics_system._optimizeActionsOnce()
+    J, a_err = dynamics_system.optimizeActionsOnce()
     print('Round: {}, Value: {}, Error: {}'.format(i, J, a_err))
 
     if last_J is not None:
