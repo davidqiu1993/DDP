@@ -649,7 +649,7 @@ class DynamicsSystemPrimitive(object):
         next_nodes[b].ssa.action_dict[k] = next_ssa.action_dict[k]
       next_nodes[b].reward = reward
 
-      dF_b, dR_next_b = edge_dynamics.derivative(prev_node.ssa, next_ssa)
+      dF_b, dR_next_b = edge_dynamics.derivative(prev_node.ssa, next_nodes[b].ssa)
       self._dF[b] = dF_b
       self._dR_next[b] = dR_next_b
 
