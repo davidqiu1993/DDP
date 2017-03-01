@@ -643,7 +643,10 @@ class DynamicsSystemPrimitive(object):
       edge_dynamics = self.dynamics_dict[b]
       
       next_ssa, reward = edge_dynamics.predict(prev_node.ssa)
-      next_nodes[b].ssa = next_ssa
+      for k in next_ssa.state_dict:
+        next_nodes[b].ssa.state_dict[k] = next_ssa.state_dict[k]
+      for k in next_ssa.action_dict:
+        next_nodes[b].ssa.action_dict[k] = next_ssa.action_dict[k]
       next_nodes[b].reward = reward
 
       dF_b, dR_next_b = edge_dynamics.derivative(prev_node.ssa, next_ssa)
