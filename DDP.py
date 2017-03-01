@@ -13,6 +13,9 @@ __copyright__   = "Copyright (C) 2017, David Qiu. All rights reserved."
 
 
 import numpy as np
+from collections import deque
+
+import pdb
 
 
 
@@ -31,49 +34,63 @@ class SSA(object):
   @property selection The branch selection preference.
   """
 
-  def __init__(self, state_dict={}, action_dict={}, selection=None):
+  def __init__(self, state_dict=None, action_dict=None, selection=None):
     super(SSA, self).__init__()
 
-    assert(type(state_dict) is dict)
-    self.state_dict = state_dict
+    if state_dict is None:
+      self.state_dict = {}
+    else:
+      assert(type(state_dict) is dict)
+      self.state_dict = state_dict
 
-    assert(type(action_dict) is dict)
-    self.action_dict = action_dict
+    if action_dict is None:
+      self.action_dict = {}
+    else:
+      assert(type(action_dict) is dict)
+      self.action_dict = action_dict
 
-    if selection is not None:
-      self.selection = selection
+    self.selection = selection
 
-    assert(self._formatCheck())
+    self._formatCheck()
 
   def _formatCheck(self):
     """
     Check if the values of the properties in this super-state-action dictionary 
     match the valid format.
-
-    @return A boolean indicating if the format pass the checking procedure.
     """
-    if type(self.state_dict) is not dict:
-      return False
+    assert(type(self.state_dict) is dict)
 
-    if type(self.action_dict) is not dict:
-      return False
+    assert(type(self.action_dict) is dict)
 
-    if len(self.state_dict.keys() & self.action_dict.keys()) > 0:
-      return False
+    assert(len(self.state_dict.keys() & self.action_dict.keys()) == 0)
 
     for k in self.state_dict:
-      if k == 'selection':
-        return False
-      if type(self.state_dict[k]) is not np.ndarray:
-        return False
+      assert(k != 'selection')
+      assert(type(self.state_dict[k]) is np.ndarray)
 
     for k in self.action_dict:
-      if k == 'selection':
-        return False
-      if type(self.action_dict[k]) is not np.ndarray:
-        return False
+      assert(k != 'selection')
+      assert(type(self.action_dict[k]) is np.ndarray)
 
-    return True
+  def copy(self):
+    """
+    Duplicate this super-state-action dictionary.
+
+    @return A super-state-action dictionary duplication of this one.
+    """
+    self._formatCheck()
+
+    ssa_copy = SSA()
+
+    for k in self.state_dict:
+      ssa_copy.state_dict[k] = self.state_dict[k]
+    
+    for k in self.action_dict:
+      ssa_copy.action_dict[k] = self.action_dict[k]
+
+    ssa_copy.selection = self.selection
+
+    return ssa_copy
 
   def keys(self):
     """
@@ -85,7 +102,7 @@ class SSA(object):
     """
     state_keys = self.state_dict.keys()
     action_keys = self.action_dict.keys()
-    selection_keys = {'selection': self.selection}.keys()
+    selection_keys = { 'selection' }
 
     joint_keys = state_keys | action_keys | selection_keys
 
@@ -102,7 +119,7 @@ class SSA(object):
     @return The super-state-action dictionary element. An error will be thrown 
             if the corresponding element does not exist.
     """
-    assert(self._formatCheck())
+    self._formatCheck()
 
     for k in self.state_dict:
       if k == name:
@@ -112,7 +129,7 @@ class SSA(object):
       if k == name:
         return self.action_dict[k]
 
-    if k == 'selection':
+    if 'selection' == name:
       return self.selection
 
     assert(False) # Element not found
@@ -127,7 +144,7 @@ class SSA(object):
     """
     self.state_dict[name] = value
 
-    assert(self._formatCheck())
+    self._formatCheck()
 
   def updateActionElement(self, name, value):
     """
@@ -139,7 +156,7 @@ class SSA(object):
     """
     self.action_dict[name] = value
 
-    assert(self._formatCheck())
+    self._formatCheck()
 
   def updateSelection(self, selection):
     """
@@ -149,7 +166,7 @@ class SSA(object):
     """
     self.selection = selection
 
-    assert(self._formatCheck())
+    self._formatCheck()
 
 
 
@@ -159,6 +176,14 @@ class DynamicsSystemNode(object):
   super-state-action dictionary and the corresponding reward it gained.
 
   @property name The name of the node.
+  @property prev_primitive_name The name of the previous bifurcation primitive 
+                                connected to this node, where `None` indicates 
+                                there is no previous bifurcation primitive 
+                                connected to it.
+  @property next_primitive_name The name of the following bifurcation primitive 
+                                connected to this node, where `None` indicates 
+                                there is no previous bifurcation primitive 
+                                connected to it.
   @property ssa The super-state-action dictionary of the node.
   @property reward The reward gained at this node.
   @property value The state-action-selection value gained for this node. Note 
@@ -171,12 +196,17 @@ class DynamicsSystemNode(object):
                     or selection.
   """
 
-  def __init__(self, name, ssa=SSA(), reward=0):
+  def __init__(self, name, prev_primitive_name=None, next_primitive_name=None, \
+                     ssa=None, reward=0):
     """
     Initialize a dynamics system node. Note that the value and value derivative 
     for the node will be initialized to default value `0`.
 
     @param name The name of the node.
+    @property prev_primitive_name The name of the previous bifurcation primitive 
+                                  connected to this node.
+    @property next_primitive_name The name of the following bifurcation primitive 
+                                  connected to this node.
     @param ssa The initial super-state-action dictionary of the node.
     @param reward The reward gained at this node.
     """
@@ -184,8 +214,15 @@ class DynamicsSystemNode(object):
 
     self.name = name
 
-    assert(type(ssa) is SSA)
-    self.ssa = ssa
+    self.prev_primitive_name = prev_primitive_name
+
+    self.next_primitive_name = next_primitive_name
+
+    if ssa is None:
+      self.ssa = SSA()
+    else:
+      assert(type(ssa) is SSA)
+      self.ssa = ssa
 
     self.reward = reward
 
@@ -194,7 +231,7 @@ class DynamicsSystemNode(object):
     self.d_value = {}
     for k in self.ssa.keys():
       if k == 'selection':
-        self.d_value[k] = None
+        self.d_value[k] = np.zeros(1)
       else:
         self.d_value[k] = np.zeros(self.ssa.retrive(k).shape[0])
 
@@ -267,7 +304,6 @@ class DynamicsSystemTransitionModel(object):
 
     accumulated_prob = 0.0
     for node_name in prediction:
-      assert(prediction[node_name] is int or prediction[node_name] is float)
       assert(prediction[node_name] >= 0)
       accumulated_prob += prediction[node_name]
     assert(abs(accumulated_prob - 1.0) < 0.000001)
@@ -392,6 +428,11 @@ class DynamicsSystemEdgeDynamicsModel(object):
     assert(callable(self.reward_func))
 
     next_ssa = self.dynamics_func(ssa)
+    for k in (ssa.state_dict.keys() - next_ssa.state_dict.keys()):
+      next_ssa.state_dict[k] = ssa.state_dict[k].copy()
+    for k in (ssa.action_dict.keys() - next_ssa.action_dict.keys()):
+      next_ssa.action_dict[k] = ssa.action_dict[k].copy()
+
     reward = self.reward_func(next_ssa)
 
     return (next_ssa, reward)
@@ -442,9 +483,12 @@ class DynamicsSystemPrimitive(object):
   @property dynamics_dict A dictionary that maps the names of the following 
                           nodes to corresponding edge dynamics models.
   @property gamma The discount factor.
+  @property action_error The action error, which indicates how much the values 
+                         of the action elements are changed during the last 
+                         backward computation.
   """
 
-  def __init__(self, name, prev_node_name=None, transition=None, dynamics_dict={}, \
+  def __init__(self, name, prev_node_name=None, transition=None, dynamics_dict=None, \
                            gamma=1.0, alpha=0.000025):
     """
     Initialize a dynamics system bifurcation primitive.
@@ -480,16 +524,21 @@ class DynamicsSystemPrimitive(object):
       assert(type(transition) is DynamicsSystemTransitionModel)
       self.transition = transition
 
-    assert(type(dynamics_dict) is dict)
-    for next_node in dynamics_dict:
-      assert(type(dynamics_dict[next_node]) is DynamicsSystemEdgeDynamicsModel)
-    self.dynamics_dict = dynamics_dict
+    if dynamics_dict is None:
+      self.dynamics_dict = {}
+    else:
+      assert(type(dynamics_dict) is dict)
+      for next_node in dynamics_dict:
+        assert(type(dynamics_dict[next_node]) is DynamicsSystemEdgeDynamicsModel)
+      self.dynamics_dict = dynamics_dict
 
     assert(0.0 <= gamma and gamma <= 1.0)
     self.gamma = gamma
 
     assert(alpha >= 0.0)
     self.alpha = alpha
+
+    self._initInternalData()
 
   def _initInternalData(self):
     """
@@ -517,52 +566,35 @@ class DynamicsSystemPrimitive(object):
     """
     Check if the internal data are valid and ready for forward and backward 
     computations.
-
-    @return A boolean indicating if the internal data are valid and ready.
     """
-    if self._T is not dict:
-      return False
+    assert(type(self._T) is dict)
     accumulated_prob = 0
     for k in self._T:
       accumulated_prob += self._T[k]
-    if abs(accumulated_prob - 1.0) >= 0.000001:
-      return False
+    assert(abs(accumulated_prob - 1.0) < 0.000001)
 
-    if self._dT is not dict:
-      return False
+    assert(type(self._dT) is dict)
     for next_node in self._dT:
-      if self._dT[next_node] is not dict:
-        return False
-        for ssa_element in self._dT[next_node]:
-          if self._dT[next_node][ssa_element] is not np.ndarray:
-            return False
-          if self._dT[next_node][ssa_element].ndim != 1:
-            return False
+      assert(type(self._dT[next_node]) is dict)
+      for ssa_element in self._dT[next_node]:
+        assert(type(self._dT[next_node][ssa_element]) is np.ndarray)
+        assert(self._dT[next_node][ssa_element].ndim == 1)
 
-    if self._dF is not dict:
-      return False
+    assert(type(self._dF) is dict)
     for next_node in self._dF:
-      if self._dF[next_node] is not dict:
-        return False
+      assert(type(self._dF[next_node]) is dict)
       for next_ssa_element in self._dF[next_node]:
-        if self._dF[next_node][next_ssa_element] is not dict:
-          return False
+        assert(type(self._dF[next_node][next_ssa_element]) is dict)
         for ssa_element in self._dF[next_node][next_ssa_element]:
-          if self._dF[next_node][next_ssa_element][ssa_element] is not np.ndarray:
-            return False
-          if self._dF[next_node][next_ssa_element][ssa_element].ndim != 2:
-            return False
+          assert(type(self._dF[next_node][next_ssa_element][ssa_element]) is np.ndarray)
+          assert(self._dF[next_node][next_ssa_element][ssa_element].ndim == 2)
 
-    if self._dR_next is not dict:
-      return False
+    assert(type(self._dR_next) is dict)
     for next_node in self._dR_next:
-      if self._dR_next[next_node] is not dict:
-        return False
+      assert(type(self._dR_next[next_node]) is dict)
       for ssa_element in self._dR_next[next_node]:
-        if self._dR_next[next_node][ssa_element] is not np.ndarray:
-          return False
-        if self._dR_next[next_node][ssa_element].ndim != 1:
-          return False
+        assert(type(self._dR_next[next_node][ssa_element]) is np.ndarray)
+        assert(self._dR_next[next_node][ssa_element].ndim == 1)
 
   def _checkInputNodes(self, prev_node, next_nodes):
     """
@@ -572,20 +604,15 @@ class DynamicsSystemPrimitive(object):
     @param prev_node The input previous node.
     @param next_nodes The input dictionary that maps the node names to 
                       corresponding following nodes.
-    @return A boolean indicating if the nodes pass the checking procedure.
     """
-    if type(prev_node) is not DynamicsSystemNode:
-      return False
-    if prev_node.name != self.prev_node_name:
-      return False
+    assert(type(prev_node) is DynamicsSystemNode)
+    assert(prev_node.name == self.prev_node_name)
+    assert(prev_node.next_primitive_name == self.name)
 
-    if len(self.dynamics_dict.keys() & next_nodes.keys()) != len(self.dynamics_dict):
-      return False
+    assert(len(self.dynamics_dict.keys() & next_nodes.keys()) == len(self.dynamics_dict))
     for k in self.dynamics_dict:
-      if type(next_nodes[k]) is not DynamicsSystemNode:
-        return False
-
-    return True
+      assert(type(next_nodes[k]) is DynamicsSystemNode)
+      assert(next_nodes[k].prev_primitive_name == self.name)
 
   def compute_forward(self, prev_node, next_nodes):
     """
@@ -599,7 +626,7 @@ class DynamicsSystemPrimitive(object):
     @return The processed previous node and a dictionary that maps the node 
             names to the corresponding following nodes.
     """
-    assert(self._checkInputNodes(prev_node, next_nodes))
+    self._checkInputNodes(prev_node, next_nodes)
 
     T = self.transition.predict(prev_node.ssa)
     assert(len(self.dynamics_dict.keys() & T.keys()) == len(self.dynamics_dict))
@@ -614,7 +641,7 @@ class DynamicsSystemPrimitive(object):
     for b in self.dynamics_dict:
       edge_dynamics = self.dynamics_dict[b]
       
-      next_ssa, reward = self.edge_dynamics.predict(prev_node.ssa)
+      next_ssa, reward = edge_dynamics.predict(prev_node.ssa)
       next_nodes[b].ssa = next_ssa
       next_nodes[b].reward = reward
 
@@ -646,7 +673,8 @@ class DynamicsSystemPrimitive(object):
     @return The processed previous node and a dictionary that maps the node 
             names to the corresponding following nodes.
     """
-    assert(self._checkInputNodes(prev_node, next_nodes))
+    self._checkInputNodes(prev_node, next_nodes)
+    self._checkInternalData()
 
     prev_node.value = 0
     for b in self._T:
@@ -681,17 +709,162 @@ class DynamicsSystemPrimitive(object):
     assert(accumulated_error < 0.000001)
     """
 
+    self.action_error = 0
     for k in prev_node.ssa.action_dict:
       prev_node.ssa.action_dict[k] += self.alpha * prev_node.d_value[k]
+      self.action_error += np.linalg.norm(prev_node.d_value[k])
 
     return (prev_node, next_nodes)
 
 
 
+class TreeDynamicsSystem(object):
+  """
+  Tree-structured dynamics system.
+  """
+
+  def __init__(self):
+    """
+    Initialize a tree-structured dynamics system.
+    """
+    super(TreeDynamicsSystem, self).__init__()
+
+    self._initInternalData()
+
+  def _initInternalData(self):
+    """
+    Initialize internal data.
+
+    @property _nodes A dictionary that maps node names to corresponding nodes, 
+                     which includes all the nodes in this dynamics system.
+    @property _root_node_name The name of the root node.
+    @property _primitives A dictionary that maps bifurcation primitive names to 
+                          corresponding bifurcation primitives, which includes 
+                          all the bifurcation primitives in this dynamics 
+                          system.
+    """
+    self._nodes = {}
+    self._root_node_name = None
+    self._primitives = {}
+
+  def updateNode(self, name, node):
+    """
+    Append or update a dynamics system node.
+
+    @param name The name of the node.
+    @param node The node to append or update. Note that its name should match 
+                the node name.
+    """
+    assert(type(node) is DynamicsSystemNode)
+    assert(node.name == name)
+
+    self._nodes[name] = node
+
+  def updateRootNodeName(self, name):
+    """
+    Designate or update a dynamics system node as the root node, with which the 
+    optimization process will begin.
+
+    @param name The name of the node. Note that the node with the corresponding 
+                name should have been appended to the dynamics system.
+    """
+    assert(len({ name } & self._nodes.keys()) == 1)
+
+    self._root_node_name = name
+
+  def updatePrimitive(self, name, primitive):
+    """
+    Append or update a dynamics system bifurcation primitive.
+
+    @param name The name of the bifurcation primitive.
+    @param primitive The primitive to append or update. Note that its name 
+                     should match the bifurcation primitive name. All related 
+                     nodes should have been appended to this dynamics system. 
+                     And this bifurcation primitive should have been 
+                     initialized.
+    """
+    assert(type(primitive) is DynamicsSystemPrimitive)
+    assert(primitive.name == name)
+
+    assert(len({ primitive.prev_node_name } & self._nodes.keys()) == 1)
+    assert(len(primitive.dynamics_dict.keys() & self._nodes.keys()) == len(primitive.dynamics_dict))
+
+    self._primitives[name] = primitive
+
+  #TODO
+  def _checkStructure(self):
+    """
+    Check the structure of the dynamics system.
+    """
+    #TODO
+
+    assert(self._root_node_name is not None)
+
+  def _optimizeActionsOnce(self):
+    """
+    Optimize for once the actions for different nodes in the dynamics system.
+
+    @return A tuple with the system value and the accumulated action error.
+    """
+    self._checkStructure()
+
+    forwardWorkQueue = deque() # nodes
+    backwardWorkStack = [] # primitives in stack
+    accumulatedActionError = 0
+
+    forwardWorkQueue.append(self._root_node_name)
+    while len(forwardWorkQueue) > 0:
+      currentNodeName = forwardWorkQueue.pop()
+      currentNode = self._nodes[currentNodeName]
+      currentPrimitiveName = currentNode.next_primitive_name
+
+      if currentPrimitiveName is not None:
+        currentPrimitive = self._primitives[currentPrimitiveName]
+        backwardWorkStack.append(currentPrimitiveName)
+
+        nextNodes = {}
+        for k in currentPrimitive.dynamics_dict:
+          forwardWorkQueue.append(k)
+          nextNodes[k] = self._nodes[k]
+
+        currentPrimitive.compute_forward(currentNode, nextNodes)
+
+    while len(backwardWorkStack) > 0:
+      currentPrimitiveName = backwardWorkStack.pop()
+      currentPrimitive = self._primitives[currentPrimitiveName]
+
+      previousNode = self._nodes[currentPrimitive.prev_node_name]
+      nextNodes = {}
+      for k in currentPrimitive.dynamics_dict:
+        nextNodes[k] = self._nodes[k]
+
+      currentPrimitive.compute_backward(previousNode, nextNodes)
+      accumulatedActionError += currentPrimitive.action_error
+
+    systemValue = self._nodes[self._root_node_name].value
+
+    return (systemValue, accumulatedActionError)
+
+
+#TODO
+class LinearDynamicsSystem(object):
+  """
+  Linear dynamics system.
+  """
+
+  def __init__(self, arg):
+    super(LinearDynamicsSystem, self).__init__()
+    self.arg = arg
+
+
+#TODO
 class GraphDynamicsSystem(object):
-  """Graph-based dynamics system."""
+  """
+  Graph-based dynamics system.
+  """
 
   def __init__(self, arg):
     super(GraphDynamicsSystem, self).__init__()
     self.arg = arg
     
+
