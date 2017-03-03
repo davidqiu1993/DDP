@@ -6,8 +6,8 @@ import pdb
 
 
 if __name__ == '__main__':
-  SAMPLE_IMAGE_PATH = 'brushstroke_sample_003.png'
-  BRUSHSTROKES_NUM = 1
+  SAMPLE_IMAGE_PATH = 'brushstroke_sample_002.png'
+  BRUSHSTROKES_NUM = 3
   BRUSHSTROKES_THICKNESS = 10
   LEARNING_RATE = 0.1
 
@@ -15,7 +15,6 @@ if __name__ == '__main__':
   image_desired = cv2.cvtColor(image_desired, cv2.COLOR_BGR2GRAY)
   ret_info, image_desired = cv2.threshold(image_desired, 127, 255, cv2.THRESH_BINARY)
   #cv2.imshow('image_desired', image_desired)
-  print(image_desired.shape)
 
   # nodes
   nodes = []
@@ -48,7 +47,7 @@ if __name__ == '__main__':
              255, \
              thickness=BRUSHSTROKES_THICKNESS)
     #cv2.imshow('image_brushstroke', image_brushstroke)
-    image_draw_next = cv2.bitwise_and(cv2.bitwise_or(image_draw, image_brushstroke), image_brushstroke)
+    image_draw_next = cv2.bitwise_or(image_draw, image_brushstroke)
     #cv2.imshow('image_draw_next', image_draw_next)
     image_increment = cv2.bitwise_xor(image_draw_next, image_draw)
     #cv2.imshow('image_increment', image_increment)
@@ -90,16 +89,6 @@ if __name__ == '__main__':
       def dynamics_dfunc (ssa):
         next_ssa = make_dynamics_func(i)(ssa)
         d = {}
-        for next_ssa_elem in next_ssa.keys():
-          d[next_ssa_elem] = {}
-          for ssa_elem in ssa.keys():
-            if next_ssa_elem == 'selection' or ssa_elem == 'selection':
-              d[next_ssa_elem][ssa_elem] = np.zeros((1, 1))
-            elif next_ssa_elem == ssa_elem:
-              assert(ssa.retrive(ssa_elem).shape[0] == next_ssa.retrive(next_ssa_elem).shape[0])
-              d[next_ssa_elem][ssa_elem] = np.eye(ssa.retrive(ssa_elem).shape[0])
-            else:
-              d[next_ssa_elem][ssa_elem] = np.zeros((ssa.retrive(ssa_elem).shape[0], next_ssa.retrive(next_ssa_elem).shape[0]))
         return d
       return dynamics_dfunc
     dynamics.dynamics_dfunc = make_dynamics_dfunc(i)
@@ -151,6 +140,7 @@ if __name__ == '__main__':
     if a_err < 0.5:
       break
 
+  image_draw_final = np.zeros(image_desired.shape, np.uint8)
   for i in range(len(nodes) - 1):
     brushstroke = nodes[i].ssa.retrive('brushstroke_' + str(i))
     print('brushstroke #{}: ({}, {}), ({}, {})'.format(
@@ -158,10 +148,10 @@ if __name__ == '__main__':
       np.round(brushstroke[0], 2), np.round(brushstroke[1], 2),
       np.round(brushstroke[2], 2), np.round(brushstroke[3], 2)
     ))
-  last_node_name = 'picture_' + str(len(nodes) - 1)
-  last_image_draw = nodes[len(nodes) - 1].ssa.retriveInfo('image_draw')
-  cv2.imshow(last_node_name, cv2.bitwise_xor(last_image_draw, image_desired))
-  cv2.imshow(last_node_name, cv2.bitwise_xor(last_image_draw, image_desired))
+    image_draw_final, image_increment, reward = simulate_brushstroke(image_draw_final, brushstroke)
+  cv2.imshow('image_draw_final', cv2.bitwise_xor(image_draw_final, image_desired))
+  #cv2.imshow('image_draw_final', image_draw_final)
+
   cv2.waitKey()
 
 
