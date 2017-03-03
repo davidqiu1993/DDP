@@ -24,7 +24,9 @@ if __name__ == '__main__':
     if (i < BRUSHSTROKES_NUM):
       node.next_primitive_name = 'draw_' + str(i)
       bound = image_desired.shape
-      init_brushstroke = np.random.sample(4) * np.array([bound[0], bound[1], bound[0], bound[1]])
+      init_p1 = np.random.sample(2) * np.array([bound[0], bound[1]])
+      init_p2 = init_p1 + np.array([5., 5.])
+      init_brushstroke = np.array([init_p1[0], init_p1[1], init_p2[0], init_p2[1]])
       node.ssa.updateActionElement('brushstroke_' + str(i), init_brushstroke)
       node.ssa.updateSelection(True)
     
@@ -151,8 +153,8 @@ if __name__ == '__main__':
       np.round(brushstroke[2], 2), np.round(brushstroke[3], 2)
     ))
     image_draw_final, image_increment, reward = simulate_brushstroke(image_draw_final, brushstroke)
-  cv2.imshow('image_draw_final', cv2.bitwise_xor(image_draw_final, image_desired))
-  #cv2.imshow('image_draw_final', image_draw_final)
+  cv2.imshow('image_draw_final_fit', cv2.bitwise_xor(image_draw_final, image_desired))
+  cv2.imshow('image_draw_final', image_draw_final)
 
   cv2.waitKey()
 
