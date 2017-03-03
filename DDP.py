@@ -32,6 +32,8 @@ class SSA(object):
   @property action_dict The dictionary that maps action element names to 
                         corresponding action elements.
   @property selection The branch selection preference.
+  @property info_dict The dictionary that maps name to corresponding additional 
+                      information.
   """
 
   def __init__(self, state_dict=None, action_dict=None, selection=None):
@@ -50,6 +52,8 @@ class SSA(object):
       self.action_dict = action_dict
 
     self.selection = selection
+
+    self.info_dict = {}
 
     self._formatCheck()
 
@@ -89,6 +93,9 @@ class SSA(object):
       ssa_copy.action_dict[k] = self.action_dict[k]
 
     ssa_copy.selection = self.selection
+
+    for k in self.info_dict:
+      ssa_copy.info_dict[k] = self.info_dict[k]
 
     return ssa_copy
 
@@ -167,6 +174,26 @@ class SSA(object):
     self.selection = selection
 
     self._formatCheck()
+
+  def retriveInfo(self, name):
+    """
+    Retrive additional information of the super-state-action dictionary.
+
+    @param name The name of the information.
+    """
+    assert(len({ name } & self.info_dict.keys()) == 1)
+
+    return self.info_dict[name]
+
+  def updateInfo(self, name, info):
+    """
+    Update or append an additional information to this super-state-action 
+    dictionary.
+
+    @param name The name of the information.
+    @param info The content of the information.
+    """
+    self.info_dict[name] = info
 
 
 
@@ -647,6 +674,8 @@ class DynamicsSystemPrimitive(object):
         next_nodes[b].ssa.state_dict[k] = next_ssa.state_dict[k]
       for k in next_ssa.action_dict:
         next_nodes[b].ssa.action_dict[k] = next_ssa.action_dict[k]
+      for k in next_ssa.info_dict:
+        next_nodes[b].ssa.info_dict[k] = next_ssa.info_dict[k]
       next_nodes[b].reward = reward
 
       dF_b, dR_next_b = edge_dynamics.derivative(prev_node.ssa, next_nodes[b].ssa)
@@ -658,8 +687,9 @@ class DynamicsSystemPrimitive(object):
 
       for next_ssa_action_element in next_nodes[b].ssa.action_dict:
         for ssa_element in self._dF[b][next_ssa_action_element]:
-          assert(self._dF[b][next_ssa_action_element][ssa_element].min() == 0)
-          assert(self._dF[b][next_ssa_action_element][ssa_element].max() == 0)
+          if next_ssa_action_element != ssa_element:
+            assert(self._dF[b][next_ssa_action_element][ssa_element].min() == 0)
+            assert(self._dF[b][next_ssa_action_element][ssa_element].max() == 0)
 
     self._checkInternalData()
 
