@@ -490,7 +490,26 @@ class DynamicsSystemEdgeDynamicsModel(object):
     assert(callable(self.dynamics_dfunc))
     assert(callable(self.reward_dfunc))
 
-    dynamics_func_derivative = self.dynamics_dfunc(ssa)
+    dynamics_func_derivative = {}
+    for next_ssa_elem in next_ssa.keys():
+      dynamics_func_derivative[next_ssa_elem] = {}
+      for ssa_elem in ssa.keys():
+        if next_ssa_elem == 'selection' and ssa_elem == 'selection':
+          dynamics_func_derivative[next_ssa_elem][ssa_elem] = np.zeros((1, 1))
+        elif next_ssa_elem == 'selection' and ssa_elem != 'selection':
+          dynamics_func_derivative[next_ssa_elem][ssa_elem] = np.zeros((ssa.retrive(ssa_elem).shape[0], 1))
+        elif next_ssa_elem != 'selection' and ssa_elem == 'selection':
+          dynamics_func_derivative[next_ssa_elem][ssa_elem] = np.zeros((1, next_ssa.retrive(next_ssa_elem).shape[0]))
+        elif next_ssa_elem == ssa_elem:
+          assert(ssa.retrive(ssa_elem).shape[0] == next_ssa.retrive(next_ssa_elem).shape[0])
+          dynamics_func_derivative[next_ssa_elem][ssa_elem] = np.eye((ssa.retrive(ssa_elem).shape[0]))
+        else:
+          dynamics_func_derivative[next_ssa_elem][ssa_elem] = np.zeros((ssa.retrive(ssa_elem).shape[0], next_ssa.retrive(next_ssa_elem).shape[0]))
+    altered_dynamics_func_derivative = self.dynamics_dfunc(ssa)
+    for next_ssa_elem in altered_dynamics_func_derivative:
+      for ssa_elem in altered_dynamics_func_derivative[next_ssa_elem]:
+        dynamics_func_derivative[next_ssa_elem][ssa_elem] = altered_dynamics_func_derivative[next_ssa_elem][ssa_elem]
+
     reward_func_derivative = self.reward_dfunc(next_ssa)
 
     return (dynamics_func_derivative, reward_func_derivative)
@@ -730,7 +749,8 @@ class DynamicsSystemPrimitive(object):
 
           dJ_next_delem = np.zeros(prev_node.ssa.retrive(k).shape[0])
           for next_ssa_element in next_nodes[b].d_value:
-            dJ_next_delem += self._dF[b][next_ssa_element][k].dot(next_nodes[b].d_value[next_ssa_element])
+            if next_ssa_element != 'selection':
+              dJ_next_delem += self._dF[b][next_ssa_element][k].dot(next_nodes[b].d_value[next_ssa_element])
 
           prev_node.d_value[k] += self._dT[b][k] * (next_nodes[b].reward + self.gamma * next_nodes[b].value) + \
                                   self._T[b] * (dR_next_delem + self.gamma * dJ_next_delem)
