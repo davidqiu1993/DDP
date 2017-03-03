@@ -7,8 +7,8 @@ import pdb
 
 if __name__ == '__main__':
   SAMPLE_IMAGE_PATH = 'brushstroke_sample_002.png'
-  BRUSHSTROKES_NUM = 3
-  BRUSHSTROKES_THICKNESS = 10
+  BRUSHSTROKES_NUM = 20
+  BRUSHSTROKES_THICKNESS = 20
   LEARNING_RATE = 0.1
 
   image_desired = cv2.imread(SAMPLE_IMAGE_PATH)
@@ -23,7 +23,9 @@ if __name__ == '__main__':
     
     if (i < BRUSHSTROKES_NUM):
       node.next_primitive_name = 'draw_' + str(i)
-      node.ssa.updateActionElement('brushstroke_' + str(i), np.array([50., 20., 50., 10.]))
+      bound = image_desired.shape
+      init_brushstroke = np.random.sample(4) * np.array([bound[0], bound[1], bound[0], bound[1]])
+      node.ssa.updateActionElement('brushstroke_' + str(i), init_brushstroke)
       node.ssa.updateSelection(True)
     
     if (i > 0):
