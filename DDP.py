@@ -899,6 +899,34 @@ class TreeDynamicsSystem(object):
 
     return (systemValue, accumulatedActionError)
 
+  def optimizeActions(self, shouldStop, verbose=0):
+    """
+    Optimize the actions until stopping criteria fulfilled.
+
+    @param shouldStop The stopping criteria function that determines if the 
+                      optimization procedure should stop. It is in the form of 
+                      `function (rounds, improvement, action_error)`, where 
+                      `rounds` indicates the number of optimization iteration 
+                      rounds past, `improvement` indicates the difference 
+                      between the system values after the last optimization 
+                      round and before the last optimization round, and 
+                      `action_error` indicates the action error accumulated at 
+                      the last optimization round.
+    @param verbose A number of either `0` or `1`, indicating if the verbose 
+                   procedural information should be printed.
+    @return The final system value.
+    """
+    rounds = 0
+    last_J = 0
+    while True:
+      J, a_err = self.optimizeActionsOnce()
+      if verbose:
+        print('Round: {}, Value: {}, Error: {}'.format(rounds, J, a_err))
+      rounds += 1
+      if shouldStop(rounds, J - last_J, a_err):
+        return J
+      last_J = J
+
 
 
 class LinearDynamicsSystem(object):
@@ -1001,6 +1029,26 @@ class LinearDynamicsSystem(object):
     systemValue, accumulatedActionError = self._treeDynamicsSystem.optimizeActionsOnce()
 
     return (systemValue, accumulatedActionError)
+
+  def optimizeActions(self, shouldStop, verbose=0):
+    """
+    Optimize the actions until stopping criteria fulfilled.
+
+    @param shouldStop The stopping criteria function that determines if the 
+                      optimization procedure should stop. It is in the form of 
+                      `function (rounds, improvement, action_error)`, where 
+                      `rounds` indicates the number of optimization iteration 
+                      rounds past, `improvement` indicates the difference 
+                      between the system values after the last optimization 
+                      round and before the last optimization round, and 
+                      `action_error` indicates the action error accumulated at 
+                      the last optimization round.
+    @param verbose A number of either `0` or `1`, indicating if the verbose 
+                   procedural information should be printed.
+    @return The final system value.
+    """
+    #todo
+    return self._treeDynamicsSystem.optimizeActions(shouldStop, verbose=verbose)
 
 
 #TODO
