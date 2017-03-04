@@ -74,6 +74,7 @@ if __name__ == '__main__':
   dynamics_system.updateDynamics('shoot', 'start', dynamics_shoot, 'destination', alpha=lr)
 
   # execute
+  """
   last_J = None
   for i in range(1000):
     J, a_err = dynamics_system.optimizeActionsOnce()
@@ -84,6 +85,14 @@ if __name__ == '__main__':
       if delta_J < 0.000001:
         break
     last_J = J
+  """
+  def optimizeActions_shouldStop(rounds, delta_J, a_err):
+    if rounds > 1000:
+      return True
+    if abs(delta_J) < 0.000001:
+      return True
+    return False
+  dynamics_system.optimizeActions(optimizeActions_shouldStop, verbose=1)
 
   print('shooter: ({}, {}), shoot_angle: {}, destination: ({}, {})'.format(
     node_start.ssa.retrive('shooter')[0], node_start.ssa.retrive('shooter')[1],
