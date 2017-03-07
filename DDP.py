@@ -1047,7 +1047,6 @@ class LinearDynamicsSystem(object):
                    procedural information should be printed.
     @return The final system value.
     """
-    #todo
     return self._treeDynamicsSystem.optimizeActions(shouldStop, verbose=verbose)
 
 
