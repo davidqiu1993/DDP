@@ -6,15 +6,26 @@ import pdb
 
 
 if __name__ == '__main__':
-  SAMPLE_IMAGE_PATH = 'brushstroke_sample_004.png'
+  SAMPLE_IMAGE_PATH = 'brushstroke_sample_001.jpg'
   BRUSHSTROKES_NUM = 50
   BRUSHSTROKES_THICKNESS = 15
   LEARNING_RATE = 0.025
+  SAVE_DIR = 'save'
+  SAVE_IDENTIFIER = 'brushstroke_thickness_LDDP'
+  SHOULD_SAVE_DRAW = True
+  SHOULD_SAVE_FRAMES = True
+  SHOULD_SAVE_VIDEO = False
 
   image_desired = cv2.imread(SAMPLE_IMAGE_PATH)
   image_desired = cv2.cvtColor(image_desired, cv2.COLOR_BGR2GRAY)
   ret_info, image_desired = cv2.threshold(image_desired, 127, 255, cv2.THRESH_BINARY)
   #cv2.imshow('image_desired', image_desired)
+
+  video_writer = None
+  if SHOULD_SAVE_VIDEO:
+    fourcc = cv2.VideoWriter_fourcc(*'H264')
+    save_video_path = SAVE_DIR + '/' + SAVE_IDENTIFIER + '.avi'
+    video_writer = cv2.VideoWriter(save_video_path, fourcc, 5.0, image_desired.shape, isColor=False)
 
   # nodes
   nodes = []
@@ -143,10 +154,26 @@ if __name__ == '__main__':
     #print(nodes[0].ssa.retrive('brushstroke_0'))
     last_node_name = 'picture_' + str(len(nodes) - 1)
     last_image_draw = nodes[len(nodes) - 1].ssa.retriveInfo('image_draw')
-    cv2.imshow(last_node_name, cv2.bitwise_xor(last_image_draw, image_desired))
+    image_draw_fit = cv2.bitwise_xor(last_image_draw, image_desired)
+
+    if SHOULD_SAVE_VIDEO:
+      video_writer.write(image_draw_fit)
+
+    if SHOULD_SAVE_FRAMES:
+      save_frame_index = str(i)
+      while len(save_frame_index) < 4:
+        save_frame_index = '0' + save_frame_index
+      save_frame_path = SAVE_DIR + '/' + SAVE_IDENTIFIER + '_' + save_frame_index + '.jpg'
+      cv2.imwrite(save_frame_path, image_draw_fit)
+
+    cv2.imshow(last_node_name, image_draw_fit)
     cv2.waitKey(25)
+
     if a_err < 0.5:
       break
+  
+  if SHOULD_SAVE_VIDEO:
+    video_writer.release()
 
   image_draw_final = np.zeros(image_desired.shape, np.uint8)
   for i in range(len(nodes) - 1):
@@ -160,6 +187,10 @@ if __name__ == '__main__':
     image_draw_final, image_increment, reward = simulate_brushstroke(image_draw_final, brushstroke)
   cv2.imshow('image_draw_final_fit', cv2.bitwise_xor(image_draw_final, image_desired))
   cv2.imshow('image_draw_final', image_draw_final)
+
+  if SHOULD_SAVE_DRAW:
+    save_draw_path = SAVE_DIR + '/' + SAVE_IDENTIFIER + '_draw.jpg'
+    cv2.imwrite(save_draw_path, image_draw_final)
 
   cv2.waitKey()
 
