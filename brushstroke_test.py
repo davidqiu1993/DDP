@@ -23,7 +23,11 @@ def test_reward_model():
 
 def test_layers_extraction():
   SAMPLE_IMAGE_PATH = 'brushstroke_sample_006.jpg'
-  DIVISION_LEVEL = 0
+  DIVISION_LEVEL = 1
+  SAVE_DIR = 'save'
+  SAVE_IDENTIFIER = 'brushstroke_test'
+  SHOULD_SAVE_LAYERS = True
+  SHOULD_SAVE_RECOMPOSED_IMAGE = True
 
   image_desired = cv2.imread(SAMPLE_IMAGE_PATH)
   cv2.imshow('image_desired', image_desired)
@@ -65,17 +69,28 @@ def test_layers_extraction():
   print('\033[Klayer images ready (images: {})'.format(len(layers)))
 
   print('recomposes image from layers...', end='\r', flush=True)
-  image_recomposed = np.zeros(image_desired.shape)
+  image_recomposed = np.zeros(image_desired.shape, np.uint8)
+  image_layers = []
   for l in range(len(layers)):
     layer = layers[l]
+    image_layer = np.zeros(image_desired.shape, np.uint8)
     for row in range(len(layer['image'])):
       for col in range(len(layer['image'][row])):
         if layer['image'][row][col] == 255:
           image_recomposed[row][col] = layer['color']
+          image_layer[row][col] = layer['color']
       print('\033[Krecomposes image from layers... (layer: {}/{}, completion: {}%)'.format(l, len(layers), np.round(100. * float(row) / float(len(layer['image']))), 1), end='\r', flush=True)
+    image_layer[0][0] = np.array([255, 255, 255])
+    image_layers.append(image_layer)
+    if SHOULD_SAVE_LAYERS:
+      save_layer_path = SAVE_DIR + '/' + SAVE_IDENTIFIER + '_layer_' + str(l) + '.jpg'
+      cv2.imwrite(save_layer_path, image_layer)
+    cv2.imshow('image_layer_' + str(l), image_layer)
   print('\033[Kimage recomposed from layers (layers: {})'.format(len(layers)))
+  if SHOULD_SAVE_RECOMPOSED_IMAGE:
+    save_recomposed_image_path = SAVE_DIR + '/' + SAVE_IDENTIFIER + '_recomposed.jpg'
+    cv2.imwrite(save_recomposed_image_path, image_recomposed)
   cv2.imshow('image_recomposed', image_recomposed)
-
 
   cv2.waitKey()
 
