@@ -1,7 +1,6 @@
 import numpy as np
 from DDP import *
 import cv2
-import sys
 
 import pdb
 
