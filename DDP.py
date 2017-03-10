@@ -87,10 +87,10 @@ class SSA(object):
     ssa_copy = SSA()
 
     for k in self.state_dict:
-      ssa_copy.state_dict[k] = self.state_dict[k]
+      ssa_copy.state_dict[k] = self.state_dict[k].copy()
     
     for k in self.action_dict:
-      ssa_copy.action_dict[k] = self.action_dict[k]
+      ssa_copy.action_dict[k] = self.action_dict[k].copy()
 
     ssa_copy.selection = self.selection
 
@@ -510,7 +510,15 @@ class DynamicsSystemEdgeDynamicsModel(object):
       for ssa_elem in altered_dynamics_func_derivative[next_ssa_elem]:
         dynamics_func_derivative[next_ssa_elem][ssa_elem] = altered_dynamics_func_derivative[next_ssa_elem][ssa_elem]
 
-    reward_func_derivative = self.reward_dfunc(next_ssa)
+    reward_func_derivative = {}
+    for next_ssa_elem in next_ssa.keys():
+      if next_ssa_elem == 'selection':
+        reward_func_derivative[next_ssa_elem] = np.zeros((1, 1))
+      else:
+        reward_func_derivative[next_ssa_elem] = np.zeros((next_ssa.retrive(next_ssa_elem).shape[0]))
+    altered_reward_func_derivative = self.reward_dfunc(next_ssa)
+    for next_ssa_elem in altered_reward_func_derivative:
+      reward_func_derivative[next_ssa_elem] = altered_reward_func_derivative[next_ssa_elem]
 
     return (dynamics_func_derivative, reward_func_derivative)
 
