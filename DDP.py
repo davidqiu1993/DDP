@@ -513,7 +513,7 @@ class DynamicsSystemEdgeDynamicsModel(object):
     reward_func_derivative = {}
     for next_ssa_elem in next_ssa.keys():
       if next_ssa_elem == 'selection':
-        reward_func_derivative[next_ssa_elem] = np.zeros((1, 1))
+        reward_func_derivative[next_ssa_elem] = np.zeros((1))
       else:
         reward_func_derivative[next_ssa_elem] = np.zeros((next_ssa.retrive(next_ssa_elem).shape[0]))
     altered_reward_func_derivative = self.reward_dfunc(next_ssa)
