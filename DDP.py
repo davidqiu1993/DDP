@@ -913,13 +913,17 @@ class TreeDynamicsSystem(object):
 
     @param shouldStop The stopping criteria function that determines if the 
                       optimization procedure should stop. It is in the form of 
-                      `function (rounds, improvement, action_error)`, where 
-                      `rounds` indicates the number of optimization iteration 
-                      rounds past, `improvement` indicates the difference 
-                      between the system values after the last optimization 
-                      round and before the last optimization round, and 
-                      `action_error` indicates the action error accumulated at 
-                      the last optimization round.
+                      `function (indicators)`, where `indicators` is a 
+                      dictionary with different indicator to judge if this 
+                      optimization procedure should stop, including 
+                        - `rounds`: the number of optimization iteration rounds 
+                          past,  
+                        - `last_value`: the system value before the last 
+                          optimization, 
+                        - `value` indicates the system value after the last 
+                          optimization, 
+                        - `action_error` indicates the action error accumulated 
+                          at the last optimization round.
     @param verbose A number of either `0` or `1`, indicating if the verbose 
                    procedural information should be printed.
     @return The final system value.
@@ -931,7 +935,13 @@ class TreeDynamicsSystem(object):
       if verbose:
         print('Round: {}, Value: {}, Error: {}'.format(rounds, J, a_err))
       rounds += 1
-      if shouldStop(rounds, J - last_J, a_err):
+      indicators = {
+        'rounds': rounds,
+        'last_value': last_J,
+        'value': J,
+        'action_error': a_err
+      }
+      if shouldStop(indicators):
         return J
       last_J = J
 

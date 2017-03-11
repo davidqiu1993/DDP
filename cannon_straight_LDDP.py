@@ -86,10 +86,10 @@ if __name__ == '__main__':
         break
     last_J = J
   """
-  def optimizeActions_shouldStop(rounds, delta_J, a_err):
-    if rounds > 1000:
+  def optimizeActions_shouldStop(indicators):
+    if indicators['rounds'] > 1000:
       return True
-    if abs(delta_J) < 0.000001:
+    if abs(indicators['value'] - indicators['last_value']) < 0.000001:
       return True
     return False
   dynamics_system.optimizeActions(optimizeActions_shouldStop, verbose=1)
