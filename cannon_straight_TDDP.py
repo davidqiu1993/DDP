@@ -44,42 +44,27 @@ if __name__ == '__main__':
     next_ssa = ssa.copy()
     next_ssa.updateSelection(None)
     destination_x = desired_destination_x
-    destination_y = (destination_x - ssa.retrive('shooter')[0]) * np.sin(ssa.retrive('shoot_angle')[0]) + ssa.retrive('shooter')[1]
+    destination_y = (destination_x - ssa.retrive('shooter')[0]) * np.tan(ssa.retrive('shoot_angle')[0]) + ssa.retrive('shooter')[1]
     next_ssa.updateStateElement('destination', np.array([destination_x, destination_y]))
     return next_ssa
   edge_shoot_destination.dynamics_func = edge_shoot_destination_dynamics_func
 
   def edge_shoot_destination_dynamics_dfunc (ssa):
-    next_ssa = edge_shoot_destination_dynamics_func(ssa)
     d = {}
-    for next_ssa_elem in next_ssa.keys():
-      d[next_ssa_elem] = {}
-      for ssa_elem in ssa.keys():
-        if next_ssa_elem == 'selection' or ssa_elem == 'selection':
-          d[next_ssa_elem][ssa_elem] = np.zeros((1, 1))
-        elif next_ssa_elem == ssa_elem:
-          assert(ssa.retrive(ssa_elem).shape[0] == next_ssa.retrive(next_ssa_elem).shape[0])
-          d[next_ssa_elem][ssa_elem] = np.eye(ssa.retrive(ssa_elem).shape[0])
-        else:
-          d[next_ssa_elem][ssa_elem] = np.zeros((ssa.retrive(ssa_elem).shape[0], next_ssa.retrive(next_ssa_elem).shape[0]))
     d_destx_theta = 0
-    d_desty_theta = (desired_destination_x - ssa.retrive('shooter')[0]) * np.cos(ssa.retrive('shoot_angle')[0])
+    d_desty_theta = (desired_destination_x - ssa.retrive('shooter')[0]) * (1 + np.tan(ssa.retrive('shoot_angle')[0])**2)
+    d['destination'] = {}
     d['destination']['shoot_angle'] = np.array([[d_destx_theta, d_desty_theta]])
     return d
   edge_shoot_destination.dynamics_dfunc = edge_shoot_destination_dynamics_dfunc
 
   def edge_shoot_destination_reward_func (next_ssa):
-    r = - (next_ssa.retrive('destination')[1] - desired_destination_y) ** 2
+    r = - (next_ssa.retrive('destination')[1] - desired_destination_y)**2
     return r
   edge_shoot_destination.reward_func = edge_shoot_destination_reward_func
 
   def edge_shoot_destination_reward_dfunc (next_ssa):
     d = {}
-    for k in next_ssa.keys():
-      if k == 'selection':
-        d[k] = np.zeros((1))
-      else:
-        d[k] = np.zeros((next_ssa.retrive(k).shape[0]))
     d_destx = 0
     d_desty = - 2 * (next_ssa.retrive('destination')[1] - desired_destination_y)
     d['destination'] = np.array([d_destx, d_desty])
@@ -87,7 +72,7 @@ if __name__ == '__main__':
   edge_shoot_destination.reward_dfunc = edge_shoot_destination_reward_dfunc
 
   # primitive: shoot
-  primitive_shoot = DynamicsSystemPrimitive('shoot', alpha=0.0025)
+  primitive_shoot = DynamicsSystemPrimitive('shoot', alpha=0.00025)
   primitive_shoot.prev_node_name = node_start.name
   primitive_shoot.transition = trans_shoot
   primitive_shoot.dynamics_dict = {}
