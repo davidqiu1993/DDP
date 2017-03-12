@@ -762,14 +762,6 @@ class DynamicsSystemPrimitive(object):
 
           prev_node.d_value[k] += self._dT[b][k] * (next_nodes[b].reward + self.gamma * next_nodes[b].value) + \
                                   self._T[b] * (dR_next_delem + self.gamma * dJ_next_delem)
-    
-    """
-    accumulated_error = 0
-    for k in prev_node.ssa.state_dict:
-      for o in prev_node.d_value[k]:
-        accumulated_error += abs(o)
-    assert(accumulated_error < 0.000001)
-    """
 
     self.action_error = 0
     for k in prev_node.ssa.action_dict:
