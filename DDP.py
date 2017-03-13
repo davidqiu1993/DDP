@@ -14,6 +14,8 @@ __copyright__   = "Copyright (C) 2017, David Qiu. All rights reserved."
 
 import numpy as np
 from collections import deque
+import cma
+from scipy.optimize import minimize
 
 import pdb
 
@@ -762,10 +764,33 @@ class DynamicsSystemPrimitive(object):
 
           prev_node.d_value[k] += self._dT[b][k] * (next_nodes[b].reward + self.gamma * next_nodes[b].value) + \
                                   self._T[b] * (dR_next_delem + self.gamma * dJ_next_delem)
+    
+    # searching for optimal alpha
+    def f(alpha):
+      ssa = prev_node.ssa.copy()
+      for k in ssa.action_dict:
+        ssa.action_dict[k] += alpha[0] * prev_node.d_value[k]
+
+      T = self.transition.predict(prev_node.ssa)
+
+      sum_reward = 0
+      for b in T:
+        edge_dynamics = self.dynamics_dict[b]
+        next_ssa, reward = edge_dynamics.predict(ssa)
+        sum_reward += T[b] * reward
+
+      return (-sum_reward)
+
+    #res = cma.fmin(f, [self.alpha, 0.0], 0.5)
+    #optimal_alpha = res[0][0]
+    #res = minimize(f, [self.alpha])
+    #optimal_alpha = max(0.0, min(100 * self.alpha, res.x[0]))
+    optimal_alpha = self.alpha
+    #print('optimal_alpha', optimal_alpha)
 
     self.action_error = 0
     for k in prev_node.ssa.action_dict:
-      prev_node.ssa.action_dict[k] += self.alpha * prev_node.d_value[k]
+      prev_node.ssa.action_dict[k] += optimal_alpha * prev_node.d_value[k]
       self.action_error += np.linalg.norm(prev_node.d_value[k])
 
     return (prev_node, next_nodes)
